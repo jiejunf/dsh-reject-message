@@ -23,6 +23,15 @@ function failure(text: string): ToolExecutionResult {
   } as ToolExecutionResult
 }
 
+/** 宿主拒绝升权的原文, 尾句由 dsh-sandbox 的 approveEscalation 固定. */
+const HOST_REJECTION = 'the user rejected escalating this command to "danger-full-access"; '
+  + 'it stays denied, so stop and explain instead of working around it'
+
+/** 改写后的同一句: 前段与原档位不动, 尾句换成可重新发起的表述. */
+const RETRYABLE_REJECTION = 'the user rejected escalating this command to "danger-full-access"; '
+  + 'if this command is still necessary, re-request it with a clearer justification, '
+  + 'though a repeat ask may be rejected again'
+
 describe('appendRejectContent', () => {
   it('appends to the last text block', () => {
     const next = appendRejectContent([{ type: 'text', text: 'denied' }], 'note')
@@ -62,5 +71,51 @@ describe('attachRejectMessage', () => {
     assert.equal(text.text.includes('the user rejected tool "bash"'), true)
     assert.equal(text.text.includes(formatRejectNote('bash', 'stay in workspace')), true)
     assert.equal(attached.additionalContexts?.length, 1)
+  })
+
+  it('rewrites the host final tail even without a description', () => {
+    const store = new RejectMessageStore(1000)
+    const attached = attachRejectMessage(
+      store,
+      exec({ sessionId: 's1', callId: 'c2' }),
+      failure(`Error: ${HOST_REJECTION}`),
+      { kind: 'accept' },
+    )
+    assert.deepEqual(attached, {
+      kind: 'accept',
+      content: [{ type: 'text', text: `Error: ${RETRYABLE_REJECTION}` }],
+    })
+  })
+
+  it('rewrites the tail in place and keeps the appended description', () => {
+    const store = new RejectMessageStore(1000)
+    store.put(store.key('s1', 'bash', 'c3'), '提权干什么')
+    const attached = attachRejectMessage(
+      store,
+      exec({ sessionId: 's1', callId: 'c3' }),
+      failure(`Error: ${HOST_REJECTION}`),
+      { kind: 'accept' },
+    )
+    if (attached.kind !== 'accept' || !('content' in attached)) {
+      throw new Error('expected content replacement')
+    }
+    const text = attached.content?.[0]
+    if (text?.type !== 'text') throw new Error('expected text')
+    assert.equal(text.text.includes(RETRYABLE_REJECTION), true)
+    assert.equal(text.text.includes('it stays denied'), false)
+    assert.equal(text.text.includes(formatRejectNote('bash', '提权干什么')), true)
+    assert.equal(attached.additionalContexts?.length, 1)
+  })
+
+  it('keeps a non-matching failure untouched', () => {
+    const store = new RejectMessageStore(1000)
+    const downstream = { kind: 'accept' as const }
+    const attached = attachRejectMessage(
+      store,
+      exec({ sessionId: 's1', callId: 'c4' }),
+      failure('tool call aborted'),
+      downstream,
+    )
+    assert.equal(attached, downstream)
   })
 })

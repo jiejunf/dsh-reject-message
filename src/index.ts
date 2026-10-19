@@ -64,7 +64,7 @@ export function apply(ctx: Context, config?: Config): void {
     const attached = attachRejectMessage(store, exec, result, downstream)
     if (attached !== downstream) {
       ctx.logger.info(
-        '%s: attached reject description to tool=%s',
+        '%s: adjusted the rejected tool result: tool=%s',
         PLUGIN_NAME,
         exec.name,
       )
