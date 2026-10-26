@@ -12,6 +12,9 @@ DeepSeek Harness Web 插件: 接管原生提权窗口, 并在原生 plan 审查�
 >    （例如沙箱提权）不预填。
 > 2. **never 路径追加**：`AutoReviewDeniedError`（auto-review 在 `never` 策略 / 子进程里的最终
 >    拒绝）的 `error.info.reason` 会被追加到工具结果正文：`Auto review denied this call: <reason>`。
+>    这条路径**只追加 content，不挂 additionalContext**：`never` 没有用户可通知、也没有审批卡；
+>    让子代理后续 review 看到历史拒绝原因的价值很弱（会话通常很短），而把系统自动决定包装成
+>    user-role notice 语义上也多余。需要时补一条 context 只是几行代码。
 >
 > 从本 fork 安装：
 >
