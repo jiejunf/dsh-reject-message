@@ -2,6 +2,26 @@
 
 DeepSeek Harness Web 插件: 接管原生提权窗口, 并在原生 plan 审查卡上补一个拒绝入口. 拒绝时可以填写描述, 模型会看到这段话.
 
+> **本仓库是 `jiejunf/dsh-reject-message` fork（以 git submodule 形式放在 `jiejunf/dsh-plugins` 的
+> `plugins/dsh-reject-message`）。** 相对上游 `azazo1/dsh-reject-message@e059404` 只加了两处
+> “复核原因回传”，版本号 `0.1.1`：
+>
+> 1. **ask 路径预填**：审批的审计原因形如 `Auto review denied tool "<name>": <reason>` 时，
+>    进入拒绝窗口会把 `<reason>` 预填进描述框（可修改、可清空；清空即普通拒绝）。用户确认后
+>    随原有的 `rejectMessage/record` → `tools/post-execute` 通道进模型。其它审批原因
+>    （例如沙箱提权）不预填。
+> 2. **never 路径追加**：`AutoReviewDeniedError`（auto-review 在 `never` 策略 / 子进程里的最终
+>    拒绝）的 `error.info.reason` 会被追加到工具结果正文：`Auto review denied this call: <reason>`。
+>
+> 从本 fork 安装：
+>
+> ```shell
+> dsh plugin --profile web add https://github.com/jiejunf/dsh-reject-message.git
+> ```
+>
+> 与上游同步：本仓库 `origin` 指向 fork；`git remote add upstream https://github.com/azazo1/dsh-reject-message.git`
+> 后 `git fetch upstream && git merge upstream/main`，再 `pnpm install && pnpm run check`。
+
 原生审批点 "拒绝" 只会回一条固定的 `rejected`, 模型不知道为什么被拒. 本插件用同一张提权卡片接住这次询问, 点拒绝后切到同款拒绝窗口, 描述可选; 留空则不追加描述, 只受下面那条尾句改写影响.
 
 plan 审查卡原生没有拒绝输入框. 本插件不重画这张卡: 卡片, 摘要, 右侧栏里的完整计划, "去聊天里说" / "确认执行" 都由原生渲染, 插件只在卡上多挂一个拒绝入口, 点开弹窗填写描述; 描述走 `exit_plan_mode` 的 Keep planning `custom`, 不是提权那条 post-execute.

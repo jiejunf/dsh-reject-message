@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
-import { appendRejectContent, attachRejectMessage } from '../src/attach.ts'
+import { appendRejectContent, attachRejectMessage, autoReviewDenialReason } from '../src/attach.ts'
 import { formatRejectNote } from '../src/shared.ts'
 import { RejectMessageStore } from '../src/store.ts'
 
@@ -21,6 +21,19 @@ function failure(text: string): ToolExecutionResult {
     error: { message: text },
     content: [{ type: 'text', text }],
   } as ToolExecutionResult
+}
+
+/** auto-review `never` 路径的最终拒绝: 原因只在 `error.info.reason` 里. */
+function autoReviewFailure(reason: string): ToolExecutionResult {
+  const text = 'Auto review rejected tool "bash"; its body was not executed'
+  return {
+    isError: true,
+    error: {
+      message: text,
+      info: { name: 'AutoReviewDeniedError', code: 'AUTO_REVIEW_DENIED', reason },
+    },
+    content: [{ type: 'text', text: `Error: ${text}` }],
+  } as unknown as ToolExecutionResult
 }
 
 /** 宿主拒绝升权的原文, 尾句由 dsh-sandbox 的 approveEscalation 固定. */
@@ -117,5 +130,44 @@ describe('attachRejectMessage', () => {
       downstream,
     )
     assert.equal(attached, downstream)
+  })
+
+  it('appends the auto-review reason of a final denial', () => {
+    const store = new RejectMessageStore(1000)
+    const attached = attachRejectMessage(
+      store,
+      exec({ sessionId: 's1', callId: 'c5' }),
+      autoReviewFailure('production read is not authorized'),
+      { kind: 'accept' },
+    )
+    assert.equal(attached.kind, 'accept')
+    if (attached.kind !== 'accept' || !('content' in attached)) {
+      throw new Error('expected content replacement')
+    }
+    const text = attached.content?.[0]
+    if (text?.type !== 'text') throw new Error('expected text')
+    assert.equal(text.text.includes('Auto review denied this call: production read is not authorized'), true)
+    assert.equal(attached.additionalContexts, undefined)
+  })
+
+  it('keeps a success and an already-handled decision untouched', () => {
+    const store = new RejectMessageStore(1000)
+    const success = { isError: false, value: {}, content: [] } as unknown as ToolExecutionResult
+    const downstream = { kind: 'accept' as const }
+    assert.equal(attachRejectMessage(store, exec({ sessionId: 's1' }), success, downstream), downstream)
+    const blocked = { kind: 'block' as const, feedback: [] }
+    const attached = attachRejectMessage(store, exec({ sessionId: 's1' }), autoReviewFailure('nope'), blocked)
+    assert.equal(attached, blocked)
+  })
+})
+
+describe('autoReviewDenialReason', () => {
+  it('reads the reviewer reason from the structured error detail', () => {
+    assert.equal(autoReviewDenialReason(autoReviewFailure(' needs explicit approval ')), 'needs explicit approval')
+  })
+
+  it('ignores other errors and empty reasons', () => {
+    assert.equal(autoReviewDenialReason(failure('tool call aborted')), undefined)
+    assert.equal(autoReviewDenialReason(autoReviewFailure('   ')), undefined)
   })
 })

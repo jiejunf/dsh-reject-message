@@ -3,12 +3,14 @@ import { describe, it } from 'node:test'
 import {
   clampMaxLength,
   DEFAULT_MAX_LENGTH,
+  formatAutoReviewNote,
   formatRejectNote,
   MAX_MAX_LENGTH,
   MIN_MAX_LENGTH,
   normalizeRejectMessage,
   parseRecordRejectArgs,
   parseRecordRejectResult,
+  prefillRejectDescription,
 } from '../src/shared.ts'
 
 describe('clampMaxLength', () => {
@@ -44,6 +46,31 @@ describe('formatRejectNote', () => {
     const note = formatRejectNote('bash', 'do not touch /etc')
     assert.equal(note.includes('bash'), true)
     assert.equal(note.includes('do not touch /etc'), true)
+  })
+})
+
+describe('prefillRejectDescription', () => {
+  it('extracts the reviewer reason from an auto-review ask', () => {
+    assert.equal(
+      prefillRejectDescription('Auto review denied tool "bash": production read is not authorized'),
+      'production read is not authorized',
+    )
+  })
+
+  it('ignores other approval reasons', () => {
+    assert.equal(prefillRejectDescription('escalate sandbox to danger-full-access: because'), undefined)
+    assert.equal(prefillRejectDescription(undefined), undefined)
+    assert.equal(prefillRejectDescription('the user rejected tool "bash"'), undefined)
+  })
+
+  it('ignores an empty reviewer reason', () => {
+    assert.equal(prefillRejectDescription('Auto review denied tool "bash": '), undefined)
+  })
+})
+
+describe('formatAutoReviewNote', () => {
+  it('keeps the reviewer reason readable', () => {
+    assert.equal(formatAutoReviewNote('production read'), 'Auto review denied this call: production read')
   })
 })
 

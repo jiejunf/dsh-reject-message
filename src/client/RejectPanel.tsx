@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { Button, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
-import { normalizeRejectMessage } from '../shared.ts'
+import { normalizeRejectMessage, prefillRejectDescription } from '../shared.ts'
 import { commandOf, type UseChat } from './command.ts'
 import type { PendingApprovalView } from './pending.ts'
 import type { RejectMessageKey } from './locales.ts'
@@ -89,6 +89,13 @@ function RejectFlow({ pending, detail, reason, t }: {
   const waiting = useRef(false)
   const composing = useRef(false)
   const compositionEnded = useRef(false)
+  const prefilled = useRef(false)
+
+  /**
+   * auto-review 的审批原因可以直接当拒绝描述交给模型; 其它审批 (例如沙箱提权)
+   * 的原因留给各自流程, 不预填. 用户仍可修改或清空.
+   */
+  const autoReason = prefillRejectDescription(pending.reason)
 
   useEffect(() => {
     active.current = true
@@ -101,6 +108,15 @@ function RejectFlow({ pending, detail, reason, t }: {
   }, [phase])
 
   const answerable = pending.answerable !== false
+
+  /** 进入拒绝窗口; 第一次进入时把复核对原因填进描述, 之后不再覆盖用户输入. */
+  const enterReject = (): void => {
+    setPhase('reject')
+    if (prefilled.current) return
+    prefilled.current = true
+    if (autoReason === undefined) return
+    setNote(current => current === '' ? autoReason : current)
+  }
 
   const answer = (outcome: 'allowed-once' | 'rejected', run?: () => Promise<void>): void => {
     if (waiting.current || pending.answerable === false) return
@@ -153,7 +169,7 @@ function RejectFlow({ pending, detail, reason, t }: {
     // oxlint-disable-next-line typescript/no-deprecated -- IME 229 covers engines without isComposing.
     if (event.repeat || composing.current || compositionEnded.current || event.nativeEvent.isComposing || event.keyCode === 229) return
     if (event.key === 'Enter') answer('allowed-once')
-    else setPhase('reject')
+    else enterReject()
   }
 
   if (phase === 'reject') {
@@ -168,6 +184,9 @@ function RejectFlow({ pending, detail, reason, t }: {
             <div className="drm-headline">{reason ?? t('escalation', { toolName: pending.toolName })}</div>
             {detail !== null && <div className="drm-command">{detail}</div>}
             <div className="drm-hint">{t('rejectHint')}</div>
+            {autoReason !== undefined && note === autoReason && (
+              <div className="drm-hint">{t('rejectPrefilled')}</div>
+            )}
             <textarea
               ref={noteRef}
               className="drm-note"
@@ -215,7 +234,7 @@ function RejectFlow({ pending, detail, reason, t }: {
             variant="outline"
             className="drm-reject"
             disabled={busy || !answerable}
-            onClick={() => { setPhase('reject') }}
+            onClick={() => { enterReject() }}
           >
             {t('reject')}
           </Button>

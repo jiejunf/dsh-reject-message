@@ -87,6 +87,33 @@ export function formatRejectNote(toolName: string, message: string): string {
   return `The user rejected this privileged request for tool "${toolName}" with this description:\n${message}`
 }
 
+/** auto-review 审批的审计原因前缀: 只有这种原因才默认填入拒绝描述. */
+const AUTO_REVIEW_ASK = /^Auto review denied tool "[^"]*": /
+
+/**
+ * 从审批的审计原因里取出可以直接交给模型的复核理由.
+ *
+ * 只有 auto-review 的 ask 原因会被采纳: 其它问法 (例如沙箱提权) 的原因由提权流程
+ * 自己维护, 不在这里重复. 预填后用户仍可修改或清空, 清空就等于普通拒绝.
+ *
+ * @param reason - 原生审批的审计原因 (`PendingApprovalView.reason`).
+ * @returns reviewer 的原始理由, 或不适配时的 `undefined`.
+ */
+export function prefillRejectDescription(reason: string | undefined): string | undefined {
+  if (reason === undefined) return undefined
+  if (!AUTO_REVIEW_ASK.test(reason)) return undefined
+  const detail = reason.replace(AUTO_REVIEW_ASK, '').trim()
+  return detail.length === 0 ? undefined : detail
+}
+
+/**
+ * never 路径自动追加的复核原因正文; 与 ask 路径的拒绝描述保持同一种读法.
+ * @param reason - `AutoReviewDeniedError` 的错误详情原因.
+ */
+export function formatAutoReviewNote(reason: string): string {
+  return `Auto review denied this call: ${reason}`
+}
+
 function asNonEmptyString(value: unknown, label: string): string {
   if (typeof value !== 'string' || value.length === 0) {
     throw new Error(`${label} 必须是非空字符串`)
