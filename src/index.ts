@@ -11,6 +11,11 @@ import type { PostToolDecision, ToolExecution, ToolExecutionResult } from '@deep
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-typert-registry'
 import { attachRejectMessage } from './attach.ts'
+import {
+  AbandonedApprovalStash,
+  ApprovalReasonStore,
+  autoReviewAskReason,
+} from './approval-reason.ts'
 import { RejectMessageRuntime } from './runtime.ts'
 import {
   clampMaxLength,
@@ -47,8 +52,24 @@ export function apply(ctx: Context, config?: Config): void {
   const resolved = Config(config)
   const maxLength = clampMaxLength(resolved.maxLength)
   const store = new RejectMessageStore(REJECT_TTL_MS)
+  const reasons = new ApprovalReasonStore()
+  const stash = new AbandonedApprovalStash()
   new RejectMessageRuntime(ctx, store, maxLength)
   ctx.logger.info('%s: host loaded, maxLength=%d', PLUGIN_NAME, maxLength)
+
+  ctx.effect(() => () => {
+    reasons.clear()
+    stash.clear()
+  }, `${PLUGIN_NAME}: abandoned approval stores`)
+
+  ctx.on('approval/request', (req, next) => {
+    const sessionId = req.agent === undefined ? undefined : String(req.agent.session.id)
+    const reason = autoReviewAskReason(req.reason)
+    if (sessionId !== undefined && req.callId !== undefined && reason !== undefined) {
+      reasons.capture(sessionId, String(req.callId), req.toolName, reason)
+    }
+    return next()
+  })
 
   ctx.effect(() => {
     const dispose = ctx.typert.register(REJECT_MANIFEST)
@@ -61,7 +82,7 @@ export function apply(ctx: Context, config?: Config): void {
     next: () => Promise<PostToolDecision>,
   ): Promise<PostToolDecision> => {
     const downstream = await next()
-    const attached = attachRejectMessage(store, exec, result, downstream)
+    const attached = attachRejectMessage(store, exec, result, downstream, { reasons, stash })
     if (attached !== downstream) {
       ctx.logger.info(
         '%s: adjusted the rejected tool result: tool=%s',

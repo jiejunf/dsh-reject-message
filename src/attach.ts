@@ -5,9 +5,27 @@
 
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { PostToolDecision, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import {
+  ABORTED_CODES,
+  formatAbandonedApproval,
+  formatAbandonedApprovals,
+  type AbandonedApprovalStash,
+  type ApprovalReasonStore,
+} from './approval-reason.ts'
 import { rewriteEscalationTailBlocks } from './escalation-tail.ts'
 import { formatAutoReviewNote, formatRejectNote, PLUGIN_NAME } from './shared.ts'
 import type { RejectMessageStore } from './store.ts'
+
+/** 超时 / 取消路径需要的两本账. */
+export interface AbandonedApprovalRuntime {
+  /** 按调用暂存的审批原因. */
+  reasons: ApprovalReasonStore
+  /** 按外层 run_code 归并的被放弃审批. */
+  stash: AbandonedApprovalStash
+}
+
+/** PTC 外层传输工具名. */
+const RUN_CODE_NAME = 'run_code'
 
 /** 从工具执行里取出会话 id. */
 export function sessionIdOf(exec: Pick<ToolExecution, 'agent'>): string | undefined {
@@ -62,6 +80,69 @@ export function autoReviewDenialReason(result: ToolExecutionResult): string | un
   return reason.length === 0 ? undefined : reason
 }
 
+/** 读取错误详情里的封闭错误码 (`AbortError` / `CodeRunFailedError` 等). */
+function failureCode(result: ToolExecutionResult): string | undefined {
+  if (!result.isError) return undefined
+  const info: unknown = result.error.info
+  if (typeof info !== 'object' || info === null) return undefined
+  const code = (info as Record<string, unknown>).code
+  return typeof code === 'string' ? code : undefined
+}
+
+/**
+ * 收集一次工具结果对应的 "审批被放弃" 信息.
+ *
+ * - 原生调用: 取消结果直接追加正文, 并挂一条 notice.
+ * - PTC 内层: 内层结果不进模型上下文, 原因按 `rootCallId` 归并; 取消结果挂的 notice
+ *   会被 PTC 桥接转发到外层 `run_code` 结果 (`exec.deferContext`).
+ * - 外层 `run_code`: 取出该次运行归并到的原因, 失败时汇成一段正文.
+ *
+ * @param runtime - 两本账; 未启用时原样返回空结果.
+ * @param exec - 当前工具执行.
+ * @param result - 进入 post-execute 的规范结果.
+ */
+export function collectAbandonedApproval(
+  runtime: AbandonedApprovalRuntime | undefined,
+  exec: ToolExecution,
+  result: ToolExecutionResult,
+): { text: string | undefined; contexts: ReturnType<typeof createUserMessage>[] } {
+  const contexts: ReturnType<typeof createUserMessage>[] = []
+  if (runtime === undefined) return { text: undefined, contexts }
+  const sessionId = sessionIdOf(exec)
+  if (sessionId === undefined) return { text: undefined, contexts }
+
+  let text: string | undefined
+  const code = failureCode(result)
+  if (code !== undefined && ABORTED_CODES.includes(code)) {
+    const captured = runtime.reasons.take(sessionId, String(exec.callId))
+    if (captured !== undefined) {
+      const note = formatAbandonedApproval(exec.name, captured.reason)
+      if (exec.parent === undefined) text = note
+      else if (exec.rootCallId !== undefined) {
+        runtime.stash.add(sessionId, String(exec.rootCallId), {
+          callId: String(exec.callId),
+          toolName: exec.name,
+          reason: captured.reason,
+        })
+      }
+      contexts.push(createUserMessage({
+        content: [{ type: 'text', text: note }],
+        source: {
+          kind: PLUGIN_NAME,
+          form: 'notice',
+          summary: `The approval for ${exec.name} was abandoned.`,
+        },
+      }))
+    }
+  }
+
+  if (exec.name === RUN_CODE_NAME) {
+    const entries = runtime.stash.take(sessionId, String(exec.callId))
+    if (result.isError && entries.length > 0) text = formatAbandonedApprovals(entries)
+  }
+  return { text, contexts }
+}
+
 /**
  * 把拒绝描述折进下游决策, 并改写宿主拒绝升权的终结尾句.
  *
@@ -75,22 +156,29 @@ export function autoReviewDenialReason(result: ToolExecutionResult): string | un
  * 审批卡; 让子代理后续 review 看到历史拒绝原因的价值很弱 (会话通常很短), 而把系统自动
  * 决定包装成 user-role notice 语义上也多余. 需要时补一条 context 只是一个循环的事.
  *
+ * 超时 / 取消路径 (审批还没被回答就被 abort, 例如 PTC 的 run_code 预算到点) 走
+ * {@link collectAbandonedApproval}: 有暂存原因时同样 content + additionalContext,
+ * 内层调用的原因归并到外层 run_code 失败结果.
+ *
  * @param store - Host 暂存.
  * @param exec - 当前工具执行.
  * @param result - 进入 post-execute 的规范结果.
  * @param downstream - 下游 listener 返回的决策.
+ * @param abandoned - 可选: 超时 / 取消路径的两本账.
  */
 export function attachRejectMessage(
   store: RejectMessageStore,
   exec: ToolExecution,
   result: ToolExecutionResult,
   downstream: PostToolDecision,
+  abandoned?: AbandonedApprovalRuntime,
 ): PostToolDecision {
   const sessionId = sessionIdOf(exec)
   const note = sessionId === undefined ? undefined : store.takeFor(sessionId, exec.name, exec.callId)
   const noteText = note === undefined ? undefined : formatRejectNote(exec.name, note)
   const denialReason = autoReviewDenialReason(result)
   const denialText = denialReason === undefined ? undefined : formatAutoReviewNote(denialReason)
+  const abandonedEffects = collectAbandonedApproval(abandoned, exec, result)
   const extra = noteText === undefined ? undefined : createUserMessage({
     content: [{ type: 'text', text: noteText }],
     source: {
@@ -99,8 +187,14 @@ export function attachRejectMessage(
       summary: `The user rejected ${exec.name}.`,
     },
   })
-  const contexts = [...existingContexts(downstream), ...extra === undefined ? [] : [extra]]
-  const appended = [noteText, denialText].filter((text): text is string => text !== undefined).join('\n\n')
+  const contexts = [
+    ...existingContexts(downstream),
+    ...extra === undefined ? [] : [extra],
+    ...abandonedEffects.contexts,
+  ]
+  const appended = [noteText, denialText, abandonedEffects.text]
+    .filter((text): text is string => text !== undefined)
+    .join('\n\n')
 
   if (downstream.kind === 'block' || 'value' in downstream || !result.isError) {
     return withContexts(downstream, contexts)

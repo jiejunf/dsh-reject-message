@@ -3,8 +3,8 @@
 DeepSeek Harness Web 插件: 接管原生提权窗口, 并在原生 plan 审查卡上补一个拒绝入口. 拒绝时可以填写描述, 模型会看到这段话.
 
 > **本仓库是 `jiejunf/dsh-reject-message` fork（以 git submodule 形式放在 `jiejunf/dsh-plugins` 的
-> `plugins/dsh-reject-message`）。** 相对上游 `azazo1/dsh-reject-message@e059404` 只加了两处
-> “复核原因回传”，版本号 `0.1.1`：
+> `plugins/dsh-reject-message`）。** 相对上游 `azazo1/dsh-reject-message@e059404` 加了三处
+> “复核原因回传”，版本号 `0.2.0`：
 >
 > 1. **ask 路径预填**：审批的审计原因形如 `Auto review denied tool "<name>": <reason>` 时，
 >    进入拒绝窗口会把 `<reason>` 预填进描述框（可修改、可清空；清空即普通拒绝）。用户确认后
@@ -15,6 +15,13 @@ DeepSeek Harness Web 插件: 接管原生提权窗口, 并在原生 plan 审查�
 >    这条路径**只追加 content，不挂 additionalContext**：`never` 没有用户可通知、也没有审批卡；
 >    让子代理后续 review 看到历史拒绝原因的价值很弱（会话通常很短），而把系统自动决定包装成
 >    user-role notice 语义上也多余。需要时补一条 context 只是几行代码。
+> 3. **超时 / 取消路径**：审批还没被回答就被取消时（例如 PTC `run_code` 的预算到点），Host 在
+>    `approval/request` 上记下 auto-review 的原因；内层工具的取消结果（`ABORTED` /
+>    `ABORTED_BEFORE_DISPATCH`）按 `rootCallId` 归并到外层 `run_code`，外层失败结果追加
+>    `Approval requests abandoned before a decision…` 一段。同时挂一条
+>    `dsh-reject-message` additionalContext：内层的 notice 会被 PTC 桥接
+>    (`exec.deferContext`) 转发到外层结果，因此模型在 `run_code` 失败后也能看到“为什么当时
+>    在等审批”。没有捕获到原因时保持原文。
 >
 > 从本 fork 安装：
 >

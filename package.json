@@ -1,6 +1,6 @@
 {
   "name": "dsh-reject-message",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Take over the native DSH approval window and plan review card so a reject can carry a description the model will see.",
   "license": "MIT",
   "type": "module",
