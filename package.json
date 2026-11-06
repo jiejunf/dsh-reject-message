@@ -13,7 +13,8 @@
     "./client": {
       "default": "./lib/client.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "dsh": {
     "bundle": {
@@ -30,6 +31,8 @@
     "lib",
     "cordis.patch.yml",
     "dsh-plugin.naming.json",
+    "locale/*.json",
+    "docs/**",
     "README.md",
     "LICENSE"
   ],

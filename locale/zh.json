@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "拒绝并附言",
+    "description": "接管原生提权窗口，拒绝时可填写描述并回传给模型；auto-review 的审查理由会自动预填，plan 审查卡上也有拒绝入口。",
+    "detail": "docs/DETAIL.md"
+  }
+}

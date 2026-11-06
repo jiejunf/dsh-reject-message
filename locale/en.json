@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Reject with a message",
+    "description": "Takes over the native approval window so a reject can carry a description the model will see; auto-review reasons are prefilled, and plan reviews get a reject entry too.",
+    "detail": "docs/DETAIL.md"
+  }
+}
