@@ -83,6 +83,13 @@ web 与 desktop 两个 profile 跑的是同一套 Web 应用, 桌面端只是多
 | --- | --- | --- |
 | `maxLength` | `4000` | 拒绝描述最大字符数 |
 
+## 详情页
+
+Plugins 详情页读 `locale/*.json` 里的 `meta.detail`，展示 `docs/preview.png`：原生审批卡 →
+描述框已预填 auto-review 原因的拒绝窗口 → 模型侧收到的工具错误结果。图源 mock 在
+`design/preview.html`（不进 `files[]`），约定与渲染/校验命令见
+`jiejunf/dsh-plugins` 仓库的 `tools/plugin-preview/README.md`。
+
 ## 实现
 
 Client 以 `conversation.composer` 优先级 `-1` 只接管 `kind === 'approval'`; 遇到标准二选一的 `kind === 'plan-review'` 时先登记这次 pending, 再返回 `null` 让原生 `ui-user-questions` 渲染原生审查卡. 插件另注册 `conversation.plan-review.actions` 里的拒绝入口, 按卡片的 `requestKey` 取回 pending 提交答案. 提权拒绝走 Host `rejectMessage/record` 和 `tools/post-execute`; plan 拒绝把描述放进 questions 答案的 `custom`. 审批和审查生命周期仍由原生 waterfall 负责.
