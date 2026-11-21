@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="440" viewBox="0 0 960 440" role="img" aria-label="拒绝审批时进入同款描述窗，审查理由已预填；确认后描述随工具错误结果进入模型上下文">
+  <title>拒绝并附言</title>
+  <style>
+    :root {
+      --bg: #0b0e13;
+      --fg: #f9fafb;
+      --body: #cfd3d6;
+      --muted: #7d838b;
+      --accent: #60a5fa;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f2f5fa;
+        --fg: #0f1115;
+        --body: #3d434c;
+        --muted: #737a84;
+        --accent: #2f55e8;
+      }
+    }
+  </style>
+
+  <defs>
+    <radialGradient id="glowBlue" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#4d6bfe" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#4d6bfe" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowRed" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f25a5a" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#f25a5a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="960" height="440" fill="var(--bg)"/>
+  <circle cx="120" cy="20" r="230" fill="url(#glowBlue)"/>
+  <circle cx="940" cy="430" r="230" fill="url(#glowRed)"/>
+
+  <g font-family="'Segoe UI', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif">
+    <!-- header -->
+    <text x="40" y="30" font-size="10" font-weight="600" letter-spacing="1.7" fill="var(--muted)">DSH REJECT MESSAGE</text>
+    <text x="40" y="61" font-size="22" font-weight="700" fill="var(--fg)">拒绝审批时，把原因一并交给模型</text>
+    <text x="40" y="82" font-size="11.5" fill="var(--muted)">接管原生提权窗口与 plan 审查卡：点「拒绝」进入描述窗，审查理由自动预填，确认后随工具错误结果进入模型上下文。</text>
+
+    <!-- native approval card -->
+    <rect x="40" y="96" width="340" height="210" rx="9" fill="#2c2c2e" stroke="#f7ad31"/>
+    <path d="M40 122 V105 A9 9 0 0 1 49 96 H371 A9 9 0 0 1 380 105 V122 Z" fill="#27241f"/>
+    <circle cx="56" cy="109" r="3" fill="#f7ad31"/>
+    <text x="66" y="113" font-size="9" fill="#f7ad31">等待审批</text>
+
+    <text x="56" y="143" font-size="8" fill="#f0f1f3"><tspan font-weight="600">Auto review 拒绝了此调用：</tspan> Temporary-directory deletion is irreversible</text>
+    <text x="56" y="156" font-size="8" fill="#f0f1f3">removal of an object not shown to have been created in this session,</text>
+    <text x="56" y="169" font-size="8" fill="#f0f1f3">and the user explicitly stated they will reject this approval, so</text>
+    <text x="56" y="182" font-size="8" fill="#f0f1f3">authorization for this exact deletion and scope is absent.</text>
+
+    <text x="56" y="200" font-family="'Cascadia Mono', Consolas, monospace" font-size="7" fill="#adb2b8">if (Test-Path -LiteralPath (Join-Path $env:TEMP 'dsh-</text>
+    <text x="56" y="211" font-family="'Cascadia Mono', Consolas, monospace" font-size="7" fill="#adb2b8">approval-manual-test')) {</text>
+    <text x="64" y="222" font-family="'Cascadia Mono', Consolas, monospace" font-size="7" fill="#adb2b8">Remove-Item -LiteralPath (Join-Path $env:TEMP 'dsh-</text>
+    <text x="56" y="233" font-family="'Cascadia Mono', Consolas, monospace" font-size="7" fill="#adb2b8">approval-manual-test') -Recurse -Force</text>
+    <text x="64" y="244" font-family="'Cascadia Mono', Consolas, monospace" font-size="7" fill="#adb2b8">'removed'</text>
+    <text x="56" y="255" font-family="'Cascadia Mono', Consolas, monospace" font-size="7" fill="#adb2b8">} else { 'absent' }</text>
+
+    <rect x="250" y="268" width="48" height="24" rx="6" fill="none" stroke="#5a5a5c"/>
+    <text x="274" y="283.5" font-size="8.5" fill="#e3e4e4" text-anchor="middle">拒绝</text>
+    <rect x="306" y="268" width="62" height="24" rx="6" fill="#f9fafb"/>
+    <text x="337" y="283.5" font-size="8.5" font-weight="500" fill="#151517" text-anchor="middle">允许一次</text>
+    <text x="56" y="320" font-size="8.5" fill="var(--muted)">原生审批卡：拒绝只会回一条 rejected，模型不知道原因</text>
+
+    <!-- arrow -->
+    <text x="412" y="196" font-size="9" font-weight="600" fill="var(--accent)" text-anchor="middle">点「拒绝」</text>
+    <path d="M390 208 H436" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="4 4"/>
+    <path d="M430 202 L436 208 L430 214" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- reject dialog -->
+    <rect x="452" y="96" width="468" height="190" rx="9" fill="#2c2c2e" stroke="#f25a5a"/>
+    <path d="M452 122 V105 A9 9 0 0 1 461 96 H911 A9 9 0 0 1 920 105 V122 Z" fill="#27241f"/>
+    <circle cx="468" cy="109" r="3" fill="#f25a5a"/>
+    <text x="478" y="113" font-size="9" fill="#f25a5a">拒绝此次提权</text>
+
+    <text x="466" y="142" font-size="8" fill="#adb2b8">可填写拒绝原因，模型会看到这段描述。留空则按普通拒绝处理。</text>
+    <text x="466" y="156" font-size="7.5" fill="#7d8084">已自动填入审查理由，可修改或清空；清空即普通拒绝。</text>
+    <rect x="466" y="166" width="440" height="70" rx="7" fill="#353638" stroke="#4a4b4e"/>
+    <text x="476" y="181" font-size="7.5" fill="#e3e4e4">Temporary-directory deletion is irreversible removal of an object not shown to have</text>
+    <text x="476" y="194" font-size="7.5" fill="#e3e4e4">been created in this session, and the user explicitly stated they will reject this</text>
+    <text x="476" y="207" font-size="7.5" fill="#e3e4e4">approval, so authorization for this exact deletion and scope is absent.</text>
+    <text x="476" y="224" font-size="7" fill="#7d8084">0 / 4000</text>
+
+    <rect x="756" y="250" width="60" height="24" rx="6" fill="none" stroke="#5a5a5c"/>
+    <text x="786" y="265.5" font-size="8.5" fill="#e3e4e4" text-anchor="middle">返回</text>
+    <rect x="822" y="250" width="84" height="24" rx="6" fill="none" stroke="#5a5a5c"/>
+    <text x="864" y="265.5" font-size="8.5" fill="#f25a5a" text-anchor="middle">确认拒绝</text>
+
+    <!-- result -->
+    <text x="686" y="306" font-size="8.5" fill="var(--muted)">确认拒绝 ↓</text>
+    <rect x="452" y="318" width="468" height="100" rx="9" fill="#1b1b1c" stroke="#4a2b2b"/>
+    <text x="466" y="336" font-size="7.5" letter-spacing="0.8" fill="#7d8084">模型侧工具结果</text>
+    <rect x="796" y="326" width="110" height="14" rx="7" fill="#3a2424"/>
+    <text x="851" y="336" font-size="7" font-weight="600" letter-spacing="0.3" fill="#e08080" text-anchor="middle">dsh-reject-message</text>
+    <text x="466" y="354" font-family="'Cascadia Mono', Consolas, monospace" font-size="8.5" fill="#f25a5a">Error: the user rejected tool "pwsh"</text>
+    <text x="466" y="370" font-size="7.5" fill="#adb2b8">The user rejected this privileged request for tool "pwsh" with this description:</text>
+    <text x="466" y="385" font-size="7.5" fill="#e3e4e4">Temporary-directory deletion is irreversible removal of an object not shown to have</text>
+    <text x="466" y="397" font-size="7.5" fill="#e3e4e4">been created in this session, and the user explicitly stated they will reject this</text>
+    <text x="466" y="409" font-size="7.5" fill="#e3e4e4">approval, so authorization for this exact deletion and scope is absent.</text>
+  </g>
+</svg>

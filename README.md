@@ -85,10 +85,10 @@ web 与 desktop 两个 profile 跑的是同一套 Web 应用, 桌面端只是多
 
 ## 详情页
 
-Plugins 详情页读 `locale/*.json` 里的 `meta.detail`，展示 `docs/preview.png`：原生审批卡 →
-描述框已预填 auto-review 原因的拒绝窗口 → 模型侧收到的工具错误结果。图源 mock 在
-`design/preview.html`（不进 `files[]`），约定与渲染/校验命令见
-`jiejunf/dsh-plugins` 仓库的 `tools/plugin-preview/README.md`。
+Plugins 详情页读 `locale/*.json` 里的 `meta.detail`，展示 `docs/preview.svg`：原生审批卡 →
+描述框已预填 auto-review 原因的拒绝窗口 → 模型侧收到的工具错误结果。SVG 既是图源也是产物，
+不再保留 HTML mock / PNG；约定与校验命令见 `jiejunf/dsh-plugins` 仓库的
+`tools/plugin-preview/README.md`。
 
 ## 实现
 
